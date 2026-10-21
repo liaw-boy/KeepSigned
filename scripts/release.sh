@@ -47,7 +47,13 @@ PUBLIC_KEY="${SPARKLE_PUBLIC_KEY:-$PUBLIC_KEY}"
 
 # Values that end up in XML or Info.plist: only plain URL / base64 characters.
 [[ "$DOWNLOAD_URL_PREFIX" =~ $safe_url ]] || die "bad DOWNLOAD_URL_PREFIX"
-overrides=(MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$BUILD")
+# Keep this Mac's paths (and so the user name) out of the shipped binary:
+# remap source/build paths and strip symbols.
+overrides=(MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="$BUILD"
+  OTHER_SWIFT_FLAGS="-file-prefix-map $PWD/=./"
+  OTHER_CFLAGS="-ffile-prefix-map=$PWD/=./"
+  DEPLOYMENT_POSTPROCESSING=YES STRIP_INSTALLED_PRODUCT=YES STRIP_STYLE=non-global
+  DEBUG_INFORMATION_FORMAT=dwarf-with-dsym)
 if [[ -n "${SPARKLE_FEED_URL:-}" ]]; then
   [[ "$SPARKLE_FEED_URL" =~ $safe_url ]] || die "bad SPARKLE_FEED_URL"
   overrides+=(SPARKLE_FEED_URL="$SPARKLE_FEED_URL")
@@ -75,6 +81,13 @@ xcodebuild build -project KeepSigned.xcodeproj -scheme KeepSigned -configuration
   -destination 'generic/platform=macOS' -derivedDataPath "$DERIVED" "${overrides[@]}" -quiet
 APP="$DERIVED/Build/Products/Release/KeepSigned.app"
 codesign --verify --deep --strict "$APP" || die "code signature check failed"
+
+# Nothing from this Mac may ship: no home path, user name or local build path.
+for needle in "$HOME" "/Users/" "$(id -un)" "$PWD"; do
+  if grep -r -a -q -F -- "$needle" "$APP"; then
+    die "the app contains '$needle' (personal path or user name); not packaging it"
+  fi
+done
 
 # The built app must point at exactly the feed and key intended above.
 plist() { /usr/libexec/PlistBuddy -c "Print :$1" "$APP/Contents/Info.plist"; }
