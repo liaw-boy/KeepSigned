@@ -1,0 +1,61 @@
+name: KeepSigned
+options:
+  bundleIdPrefix: dev.maxcat
+  deploymentTarget:
+    macOS: "15.0"
+packages:
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    exactVersion: 2.10.0
+targets:
+  KeepSigned:
+    type: application
+    platform: macOS
+    sources: [KeepSigned]
+    dependencies:
+      - package: Sparkle
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.maxcat.keepsigned
+        GENERATE_INFOPLIST_FILE: YES
+        # Sparkle keys only; merged into the generated Info.plist.
+        INFOPLIST_FILE: KeepSigned/Info.plist
+        SPARKLE_FEED_URL: https://github.com/liaw-boy/KeepSigned/releases/latest/download/appcast.xml
+        # Public half of the EdDSA update key; the private half stays in the release Mac's keychain.
+        SPARKLE_PUBLIC_KEY: "sFCbqhMStnMe44ulZQO3Ji5ekjgktwVu093zd+AgRsU="
+        INFOPLIST_KEY_LSUIElement: YES
+        INFOPLIST_KEY_CFBundleDisplayName: KeepSigned
+        # Generated from design/AppIcon.svg by scripts/make-icon.sh.
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        # scripts/release.sh overrides both from VERSION.
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "100"
+        SWIFT_VERSION: "5.0"
+        # Runs local tools (xcodebuild/devicectl), so no App Sandbox; signed to run locally.
+        ENABLE_APP_SANDBOX: NO
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        ENABLE_HARDENED_RUNTIME: NO
+  KeepSignedTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources: [KeepSignedTests]
+    dependencies:
+      - target: KeepSigned
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.maxcat.keepsigned.tests
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "5.0"
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/KeepSigned.app/Contents/MacOS/KeepSigned"
+schemes:
+  KeepSigned:
+    build:
+      targets:
+        KeepSigned: all
+        KeepSignedTests: [test]
+    test:
+      targets: [KeepSignedTests]

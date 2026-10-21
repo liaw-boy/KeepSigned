@@ -1,0 +1,17 @@
+# Xcode
+xcuserdata/
+DerivedData/
+build/
+.DS_Store
+# KeepSigned's project is generated from project.yml (XcodeGen).
+# SampleApp.xcodeproj is committed so users without XcodeGen can pick it in KeepSigned.
+KeepSigned.xcodeproj/
+# Release artifacts and signing keys never go in git
+dist/
+*.p12
+*.pem
+*.key
+*private*key*
+sparkle_private*
+ed25519*
+.env*
