@@ -1,6 +1,8 @@
 name: KeepSigned
 options:
   bundleIdPrefix: dev.maxcat
+  # UI is Traditional Chinese; also lets Sparkle's dialogs use its zh_TW strings.
+  developmentLanguage: zh-Hant
   deploymentTarget:
     macOS: "15.0"
 packages:

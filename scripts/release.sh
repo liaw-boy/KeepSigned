@@ -1,7 +1,8 @@
 #!/bin/bash
 # Builds a signed update for the version in VERSION:
-#   dist/KeepSigned-<version>.zip  and  dist/appcast.xml
-# Upload both to the GitHub release tagged v<version>; this script never tags or uploads.
+#   dist/KeepSigned-<version>.zip, dist/KeepSigned.zip (same file) and dist/appcast.xml
+# Upload all three to the GitHub release tagged v<version>; this script never tags or uploads.
+# KeepSigned.zip has a fixed name so .../releases/latest/download/KeepSigned.zip always works.
 #
 # The EdDSA private key is read from the login keychain (create it once with
 # build/SourcePackages/artifacts/sparkle/Sparkle/bin/generate_keys).
@@ -94,6 +95,12 @@ SIGNATURE="$("$BIN/sign_update" ${sign_args[@]+"${sign_args[@]}"} "$ZIP")"
 MIN_OS="$(plist LSMinimumSystemVersion)"
 [[ "$MIN_OS" =~ ^[0-9.]+$ ]] || die "unexpected LSMinimumSystemVersion"
 
+# Release notes: this version's "- " bullets from CHANGELOG.md, HTML-escaped,
+# shown in Sparkle's update window (and covered by the appcast signature).
+NOTES="$(awk -v v="## $VERSION" '$0 == v {on=1; next} /^## / {on=0} on && /^- /' CHANGELOG.md \
+  | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e 's#^- \(.*\)#<li>\1</li>#')"
+[[ -n "$NOTES" ]] || die "CHANGELOG.md has no '## $VERSION' section with '- ' items"
+
 APPCAST="$OUT/appcast.xml"
 cat > "$APPCAST" <<XML
 <?xml version="1.0" encoding="utf-8"?>
@@ -106,7 +113,9 @@ cat > "$APPCAST" <<XML
       <sparkle:version>$BUILD</sparkle:version>
       <sparkle:shortVersionString>$VERSION</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>$MIN_OS</sparkle:minimumSystemVersion>
-      <sparkle:releaseNotesLink>$REPO_URL/releases/tag/v$VERSION</sparkle:releaseNotesLink>
+      <description><![CDATA[<ul>
+$NOTES
+</ul>]]></description>
       <enclosure url="$DOWNLOAD_URL_PREFIX/$NAME" type="application/octet-stream" $SIGNATURE/>
     </item>
   </channel>
@@ -117,6 +126,8 @@ XML
 "$BIN/sign_update" ${sign_args[@]+"${sign_args[@]}"} "$APPCAST" >/dev/null
 grep -q 'sparkle-signatures' "$APPCAST" || die "appcast was not signed"
 
-echo "Done: $ZIP and $APPCAST"
-[[ -z "$SUFFIX" ]] && echo "Next (manual): create release v$VERSION on GitHub and upload both files."
+cp "$ZIP" "$OUT/KeepSigned$SUFFIX.zip"
+
+echo "Done: $ZIP, $OUT/KeepSigned$SUFFIX.zip and $APPCAST"
+[[ -z "$SUFFIX" ]] && echo "Next (manual): create release v$VERSION on GitHub and upload all three files."
 true
